@@ -1,0 +1,14 @@
+INFO: 2021-10-13 21:30:36: Working directories
+------------------------------------------------------------------------
+INFO: 2021-10-13 21:30:36: SCRIPT RUNNING IN: /Volumes/Samsung_T5/NICER_pipeline
+INFO: 2021-10-13 21:30:36: DATA DIR: /Volumes/Samsung_T5
+------------------------------------------------------------------------
+
+INFO: 2021-10-13 21:30:36: TOTAL N. OF OBSERVATIONS: 1
+
+INFO: 2021-10-13 21:30:36: Processing observations
+========================================================================
+INFO: 2021-10-13 21:30:36: Processing obs ID: 1200120101, 1/1
+--------------------------------------------------------------------------------
+INFO: 2021-10-13 21:30:36: I found an event file: ni1200120101_0mpu7_cl.evt
+INFO: 2021-10-13 21:30:44: Moving old cl and ufa event files to graveyard
