@@ -1,20 +1,21 @@
 import os
 import sys
-sys.path.append('/Volumes/Samsung_T5/kronos')
+sys.path.append('/Volumes/Samsung_T5/saturnx')
 sys.path.append('/Users/xizg0003/AstroBoy/nicer_backdir')
 import logging
 import datetime
 import pathlib
+from astropy.io import fits
 
 import tkinter as tk
 from tkinter import filedialog
 
 from nicergof.bkg import bkg_estimator as be
 
-from kronos.utils.my_functions import *
-from kronos.utils.xray import *
-from kronos.utils.nicer_functions import *
-from kronos.utils.my_logging import *
+from saturnx.utils.my_functions import *
+from saturnx.utils.xray import *
+from saturnx.utils.nicer_functions import *
+from saturnx.utils.my_logging import *
 
 '''
 ARGUMENTS
@@ -71,9 +72,9 @@ default_args = {'obs_dir':False,
                 'zip_evt':True,
                 'drama':False,
                 'debug':False,
-                'target':'Cygnus-X1',
-                'ar':'19 58 21.6758193269',
-                'dec':'+35 12 05.782512305'}
+                'target':False,
+                'ra':False,
+                'dec':False}
 arg_dict = read_args(default_args)
 # ---------------------------------------------------------------------
 
@@ -114,28 +115,59 @@ for key,item in arg_dict.items():
     mylogging.info(f'{key}: {item}')
 mylogging.info('-'*36+'\n')
 
+# Reading all digits folders (these are supposed to be NICER IDs)
+obs_list = list_items(obs_dir,digits=True)
+
+# Reading target name and position from unfiltered event file
+# *********************************************************************
+uf_file = list_items(obs_dir/obs_list[0]/'xti/event_uf',itype='file',
+    include_and=['_0mpu0_uf'])
+if not uf_file[0].is_file():
+    mylogging.error('Could not find a cleaned event file to read the target name and position')
+    sys.exit()
+with fits.open(uf_file[0]) as hdul:
+    arg_dict['target'] = hdul[0].header['OBJECT']
+    arg_dict['ra'] = str(hdul[0].header['RA_OBJ'])
+    arg_dict['dec'] = str(hdul[0].header['DEC_OBJ'])
+
 # Target name
 mylogging.info(f"Target: {arg_dict['target']}")
-div_ar = arg_dict['ar'].split()
+
 # Right ascension
-ar = str( float(div_ar[0]) + float(div_ar[1])/60 + \
-    float(div_ar[2])/3600 )
-mylogging.info(f"AR: {ar} ({arg_dict['ar']})")
+div_ar = arg_dict['ra'].split()
+if len(div_ar) == 3:
+    ra = str( float(div_ar[0]) + float(div_ar[1])/60 + \
+        float(div_ar[2])/3600 )
+elif len(div_ar) == 1:
+    ra = div_ar[0]
+else:
+    mylogging.error('User specified RA format should be 00 00 00.00')
+    sys.exit()
+mylogging.info(f"AR: {ra} ({arg_dict['ra']})")
+
 # Declination
 div_dec = arg_dict['dec'].split()
-dec = div_dec[0][0] + str( float(div_dec[0][1:]) + \
-    float(div_dec[1])/60 + float(div_dec[2])/3600 )
+if len(div_dec) == 3:
+    if div_dec[0][0] in ['-','+']:
+        dec = div_dec[0][0] + str( float(div_dec[0][1:]) + \
+            float(div_dec[1])/60 + float(div_dec[2])/3600 )
+elif len(div_dec) == 1:
+    dec = div_dec[0]
+else:
+    mylogging.error('User specified DEC format should be +00 00 00.00')
+    sys.exit()
 mylogging.info(f"DEC: {dec} ({arg_dict['dec']})\n")
+
 # Confirming
 ans = yesno('Important!!! Is this your target?')
 if not ans: sys.exit()
+# *********************************************************************
 
 mylogging.info('Working directories\n'+72*'-')
 mylogging.info('Script running in: {}'.format(home))
 mylogging.info('Data dir: {}\n'.format(obs_dir)+72*'-'+'\n')
 
 # Listing obs ID folders in the data folder
-obs_list = list_items(obs_dir,digits=True)
 n_obs = len(obs_list)
 mylogging.info('Total number of observations: {}\n'.\
     format(n_obs))
@@ -368,8 +400,12 @@ for o in range(n_obs):
             arf_file = event_cl_dir/f'arf_bdc.arf'
             lis_file = event_cl_dir/f'arf_bdc.lis'
 
+            # Even if the input cl file is not bdc (bad detector 
+            # corrected), I specify the same bad detector list used in
+            # the procedure to compute bdc cleaned event files.
+            # That is why the name of this arf file has _bdc in it.
             mylogging.info('Computing ARF file ...')
-            command = f'nicerarf infile={spectrum_file} ra={ar} dec={dec} \
+            command = f'nicerarf infile={spectrum_file} ra={ra} dec={dec} \
                 attfile={mkf_file} selfile={cl_file} \
                 detlist="launch,{to_remove}" \
                 outfile={arf_file} outwtfile={lis_file} clobber=yes > nicerarf.log'
